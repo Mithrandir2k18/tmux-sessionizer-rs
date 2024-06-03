@@ -1,0 +1,12 @@
+[package]
+name = "tmux-sessionizer-rs"
+version = "0.1.0"
+edition = "2018"
+
+
+[dependencies]
+rayon = "1.5"
+serde = { version = "1.0", features = ["derive"] }
+serde_yaml = "0.8"
+structopt = "0.3"
+shellexpand = "2.0"
