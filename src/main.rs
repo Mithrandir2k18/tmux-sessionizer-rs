@@ -22,12 +22,15 @@ struct Cli {
 struct Config {
     search_paths: Vec<Option<String>>,
     nested: Option<bool>,
+    explicit_repos: Option<Vec<Option<String>>>,
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Cli::from_args();
     let config = load_config(args.config);
     let nested = config.nested.unwrap_or(false);
+    let explicit_repos: Vec<Option<String>> = config.explicit_repos.unwrap_or(Vec::new());
+    let explicit_repos = filter_contained_paths(explicit_repos);
 
     let search_paths = filter_contained_paths(config.search_paths);
 
@@ -43,6 +46,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         })
         .flatten()
         .collect();
+
+    let repos = [repos, explicit_repos].concat();
 
     let choices = repos
         .iter()
