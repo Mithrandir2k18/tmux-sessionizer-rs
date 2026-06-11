@@ -36,7 +36,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let explicit_repos = filter_contained_paths(explicit_repos);
 
     let search_paths = filter_contained_paths(config.search_paths);
-
     let repos: Vec<PathBuf> = search_paths
         .par_iter()
         .filter_map(|root| {
@@ -70,13 +69,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .to_str()
         .unwrap()
         .replace('.', "_");
-
     if !is_tmux_running() {
         start_tmux_session(&selected_name, &selected_path)?;
     }
-
     switch_tmux_client(&selected_name, &selected_path)?;
-
     Ok(())
 }
 
@@ -97,7 +93,6 @@ fn filter_contained_paths(paths: Vec<Option<String>>) -> Vec<PathBuf> {
         .map(|p| shellexpand::tilde(p.to_str().unwrap()).to_string())
         .map(|p| PathBuf::from(p).clean())
         .collect();
-
 
     expanded_cleaned_paths.sort();
     expanded_cleaned_paths.dedup();
@@ -121,26 +116,30 @@ fn find_git_repos(root: &Path, nested: bool) -> Vec<PathBuf> {
         return Vec::new();
     }
 
-    let mut git_repos = Vec::new();
+    let entries: Vec<_> = match fs::read_dir(root) {
+        Ok(rd) => rd.filter_map(Result::ok).collect(),
+        Err(_) => return Vec::new(),
+    };
 
-    let entries: Vec<_> = fs::read_dir(root).unwrap().filter_map(Result::ok).collect();
-    for entry in entries {
-        let path = entry.path();
-        if !path.is_dir() {
-            continue;
-        }
-        if path.join(".git").exists() {
-            git_repos.push(path.clone());
-            if nested {
-                git_repos.extend(find_git_repos(&path, nested));
+    entries
+        .par_iter()
+        .flat_map(|entry| {
+            let path = entry.path();
+            if !path.is_dir() {
+                return Vec::new();
             }
-            continue;
-        }
 
-        git_repos.extend(find_git_repos(&path, nested));
-    }
-
-    git_repos
+            if path.join(".git").exists() {
+                let mut found = vec![path.clone()];
+                if nested {
+                    found.extend(find_git_repos(&path, nested));
+                }
+                found
+            } else {
+                find_git_repos(&path, nested)
+            }
+        })
+        .collect()
 }
 
 fn fzf_select(choices: &[String]) -> Result<String, Box<dyn std::error::Error>> {
