@@ -16,6 +16,9 @@ struct Cli {
         help = "Path to YAML configuration file"
     )]
     config: Option<PathBuf>,
+
+    #[structopt(long, help = "Print found repos and exit without launching fzf")]
+    dry_run: bool,
 }
 
 #[derive(Debug, Deserialize)]
@@ -46,15 +49,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         })
         .flatten()
         .collect();
-
     let repos = [repos, explicit_repos].concat();
+    if args.dry_run {
+        return Ok(());
+    }
 
     let choices = repos
         .iter()
         .map(|p| p.display().to_string())
         .collect::<Vec<_>>();
     let selected = fzf_select(&choices)?;
-
     if selected.is_empty() {
         return Ok(());
     }
